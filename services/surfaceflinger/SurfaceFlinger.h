@@ -285,6 +285,9 @@ public:
     // This also allows devices with wide-color displays that don't
     // want to support color management to disable color management.
     static bool hasWideColorDisplay;
+    friend class ExSurfaceFlinger;
+
+    static int primaryDisplayOrientation;
 
     static char const* getServiceName() ANDROID_API {
         return "SurfaceFlinger";
@@ -324,6 +327,8 @@ public:
     // synchronous message to the main thread to obtain one on the fly
     uint32_t getNewTexture();
 
+    virtual bool IsHWCDisabled() { return false; }
+
     // utility function to delete a texture on the main thread
     void deleteTextureAsync(uint32_t texture);
 
@@ -344,8 +349,6 @@ public:
 
     bool authenticateSurfaceTextureLocked(
         const sp<IGraphicBufferProducer>& bufferProducer) const;
-
-    int getPrimaryDisplayOrientation() const { return mPrimaryDisplayOrientation; }
 
 private:
     friend class Client;
@@ -469,6 +472,12 @@ private:
     void onRefreshReceived(int32_t sequenceId, hwc2_display_t display) override;
 
     /* ------------------------------------------------------------------------
+     * Extensions
+     */
+    virtual void handleDPTransactionIfNeeded(
+                     const Vector<DisplayState>& /*displays*/) { }
+
+    /* ------------------------------------------------------------------------
      * Message handling
      */
     void waitForEvent();
@@ -539,6 +548,10 @@ private:
             sp<Layer>* outLayer);
 
     status_t createColorLayer(const sp<Client>& client, const String8& name,
+            uint32_t w, uint32_t h, uint32_t flags, sp<IBinder>* outHandle,
+            sp<Layer>* outLayer);
+
+    status_t createContainerLayer(const sp<Client>& client, const String8& name,
             uint32_t w, uint32_t h, uint32_t flags, sp<IBinder>* outHandle,
             sp<Layer>* outLayer);
 
@@ -860,7 +873,6 @@ private:
     mutable std::unique_ptr<MessageQueue> mEventQueue{std::make_unique<impl::MessageQueue>()};
     FrameTracker mAnimFrameTracker;
     DispSync mPrimaryDispSync;
-    int mPrimaryDisplayOrientation = DisplayState::eOrientationDefault;
 
     // protected by mDestroyedLayerLock;
     mutable Mutex mDestroyedLayerLock;
